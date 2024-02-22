@@ -13,10 +13,10 @@ Uptime=$(uptime -p)
 #Variables for Hardware Information
 #PROCESSOR MAKE AND MODEL, CURRENT AND MAXIMUM CPU SPEED, SIZE OF INSTALLED RAM, MAKE AND MODEL AND SIZE FOR ALL INSTALLED DISKS, MAKE AND MODEL OF VIDEO CARD
 Cpu=$(lscpu | grep "Model name" | awk -F ':' '{print $2}' | xargs)
-Speed=$(lscpu | grep "BogoMIPS" | uniq -u) 
+Speed=$(lscpu | grep "BogoMIPS" | uniq -u | awk '{print $2}') 
 #BogoMips is a crude measurement of CPU speed made by the Linux kernel
-Ram=$(free -h | awk '/^Mem:/{print $2}')
-Disk=$(df -h | awk '!/Filesystem/ {print $6 " " $4}')
+Ram=$(free -h | grep Mem | awk '{print $2}')
+Disk=$(lsblk -io NAME,MODEL,SIZE | sed 's/$/\\n/')
 Video=$(sudo lshw -class display | awk '/product/ {print $2 " " $3 " " $4}')
 
 
@@ -26,8 +26,8 @@ FQDN=$(hostname -f)
 HostAddress=$(hostname -I | awk '{print $1}')
 GatewayIP=$(ip route | grep default | awk '{print $3}')
 DNSServer=$(grep "nameserver" /etc/resolv.conf | awk '{print $2}')
-InterfaceName=$(lshw -class network | awk '/product/ {print $2 " " $3 " " $4}')
-myIPAddress=$(ip a | grep -w inet | awk '{print $2}' | grep -v 127.0.0.1)
+InterfaceName=$(sudo lshw -class network | awk '/product/ {print $2 " " $3 " " $4}' | sort | uniq)
+IPAddress=$(ip a | grep -w inet | awk '{print $2}' | grep -v 127.0.0.1)
 
 
 #Variables for System Status
@@ -36,12 +36,12 @@ UsersLoggedIn=$(who | awk '{print $1}' | sort | uniq | tr '\n' ',')
 DiskSpace=$(df -h | awk '!/Filesystem/ {print $6 " " $4}')
 ProcessCount=$(ps aux | wc -l)
 LoadAverages=$(cat /proc/loadavg | awk '{print $1 ", " $2 ", " $3}')
-MemoryAllocation=$(free -h | grep Mem | awk '{print $4 "/" "(free)"}')
+MemoryAllocation=$(free -h | grep Mem | awk '{print $4 "/" "(free memory)"}')
 ListeningNetworkPorts=$(ss -tuln | awk '/LISTEN/ {print $4}' | cut -d':' -f2 | sort -u | tr '\n' ',')
-UFWRules=$(sudo ufw status verbose)
+UFWRules=$(sudo ufw status)
 
 
-#--------------------END OF VARIABLES--------------------
+#--------------------SYSTEM REPORT--------------------
 
 
 cat <<EOF
@@ -58,10 +58,11 @@ Uptime: $Uptime
 
 Hardware Information
 --------------------
-cpu: $Cpu
+CPU: $Cpu
 Speed: $Speed
 Ram: $Ram
-Disk(s): $Disk
+Disk(s): 
+$Disk
 Video: $Video
 
 
@@ -73,13 +74,15 @@ Gateway IP: $GatewayIP
 DNS Server: $DNSServer
  
 Interface Name: $InterfaceName
-IP Address: $IPAddress
+IP Address: 
+$IPAddress
 
 
 System Status
 --------------------
 Users Logged In: $UsersLoggedIn
-Disk Space: $DiskSpace 
+Disk Space: 
+$DiskSpace 
 Process Count: $ProcessCount
 Load Averages: $LoadAverages
 Memory Allocation: $MemoryAllocation
